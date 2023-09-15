@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.db.connection import get_db
+from db.connection import get_db
 
-from app.apis import area
+from apis import area
 
 area_router = APIRouter(
     prefix="/api/area",  # url 앞에 고정적으로 붙는 경로추가

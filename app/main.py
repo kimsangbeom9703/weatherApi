@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routers.area import area_router
+from routers.area import area_router
 
 app = FastAPI()
 app.include_router(area_router)

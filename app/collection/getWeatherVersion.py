@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from core.config import settings
+from crud import crud_create
 
 import requests
 
