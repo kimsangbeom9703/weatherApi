@@ -21,41 +21,40 @@ from db.models.weatherVersionModel import WeatherVersion
 
 
 class WeatherVersionDataCollector:
-    def __init__(self, type):
+    def __init__(self, call_type):
         self.url = settings.GET_VERSION_URL
-        self.serviceKey = settings.SERVICE_KEY
-        self.callType = type
-        self.baseDateTime = self.calculate_base_date_time()
-        print(self.baseDateTime)
+        self.service_key = settings.SERVICE_KEY
+        self.call_type = call_type
+        self.base_date_time = self.calculate_base_date_time()
         self.call_api_data()
 
     def calculate_base_date_time(self):
         now = datetime.now()
-        if (self.callType == 'VSRT'):
+        if self.call_type == 'VSRT':
             if now.minute <= 45:
                 if now.hour == 0:
                     base_date = (now - timedelta(days=1)).strftime('%Y%m%d')
                     base_time = '2300'
-                    base_datetime = base_date + base_time
                 else:
                     base_date = now.strftime('%Y%m%d')
                     base_time = (now - timedelta(hours=1)).strftime('%H30')
-                    base_datetime = base_date + base_time
             else:
-                base_datetime = now.strftime('%Y%m%d%H30')
+                base_date = now.strftime('%Y%m%d')
+                base_time = now.strftime('%H30')
         else:
-            base_times = ['0200', '0500', '0800', '1100', '1400', '1700', '2000', '2300']
+            base_times = ['0210', '0510', '0810', '1110', '1410', '1710', '2010', '2310']
             current_time = now.time()
             closest_time = min(base_times, key=lambda x: (current_time.hour - int(x[:2])) ** 2 + (
                     current_time.minute - int(x[2:])) ** 2)
-            base_datetime = now.strftime('%Y%m%d')+closest_time
-        return base_datetime
+            base_date = now.strftime('%Y%m%d')
+            base_time = closest_time
+        return base_date + base_time
 
     def call_api_data(self):
         params = {
-            'serviceKey': self.serviceKey,
-            'basedatetime': self.baseDateTime,
-            'ftype': self.callType,
+            'serviceKey': self.service_key,
+            'basedatetime': self.base_date_time,
+            'ftype': self.call_type,
             'pageNo': '1',
             'numOfRows': '10',
             'dataType': 'JSON'
@@ -63,29 +62,30 @@ class WeatherVersionDataCollector:
         headers = {
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36'}
         response = requests.get(self.url, params=params, verify=False, headers=headers)
-        resData = response.json()
-        pprint.pp(resData)
-        self.data_save(resData)
+        res_data = response.json()
+        self.data_save(res_data)
 
     def data_save(self, res):
-        status = res.get('response').get('header').get('resultCode')
-        status_str = res.get('response').get('header').get('resultMsg')
-        file_type = res.get('response').get('body').get('items').get('item')[0].get('filetype')
-        version = res.get('response').get('body').get('items').get('item')[0].get('version')
-        print("Starting data save")
-        db = SessionLocal()  # 세션 열기
+        status = res['response']['header']['resultCode']
+        status_str = res['response']['header']['resultMsg']
+        items = res['response']['body']['items']['item']
+        if not items:
+            version = '00000000000'
+        else:
+            item = items[0]
+            version = item['version']
+        db = SessionLocal()
         try:
-            # 데이터베이스에 추가
             if status == '00':
-                existing_version = db.query(WeatherVersion).filter_by(used=1,type=file_type, version=version).first()
+                existing_version = db.query(WeatherVersion).filter_by(used=1, type=self.call_type, version=version).first()
                 if not existing_version:
                     weather_version = WeatherVersion(
                         status=status,
                         status_str=status_str,
-                        type=file_type,
+                        type=self.call_type,
                         version=version,
                         call_datetime=datetime.now().strftime('%Y-%m-%d %H:%M:00'),
-                        datetime=self.baseDateTime,
+                        datetime=self.base_date_time,
                         used=0
                     )
                     db.add(weather_version)
@@ -94,21 +94,18 @@ class WeatherVersionDataCollector:
                 weather_version = WeatherVersion(
                     status=status,
                     status_str=status_str,
-                    type=self.callType,
+                    type=self.call_type,
                     version='00000000000',
                     call_datetime=datetime.now().strftime('%Y-%m-%d %H:%M:00'),
-                    datetime=self.baseDateTime,
+                    datetime=self.base_date_time,
                     used=0
                 )
                 db.add(weather_version)
                 db.commit()
-            print("Data saved successfully")
         except Exception as e:
             db.rollback()
-            print("Data save failed:", str(e))
         finally:
-            db.close()  # 세션 닫기
-
+            db.close()
 
 if __name__ == "__main__":
     WeatherVersionDataCollector('VSRT')
