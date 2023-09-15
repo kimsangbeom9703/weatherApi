@@ -1,7 +1,7 @@
 from sqlalchemy import Column, VARCHAR, DECIMAL, Integer, BigInteger, DATE, ForeignKey
 from db.session import Base
 class AreaData(Base):
-    __tablename__ = "a rea_data"
+    __tablename__ = "area_data"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True, comment='')
     area_code = Column(BigInteger,primary_key=True,nullable=False,comment='행정구역 코드')

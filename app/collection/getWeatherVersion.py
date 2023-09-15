@@ -7,15 +7,17 @@
 # ##
 import pprint
 import sys
+import requests
+
 from os import path
 from datetime import datetime, timedelta
 
 sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from core.config import settings
-from crud import crud_create
 
-import requests
+from db.session import SessionLocal
+from db.models.weatherVersionModel import WeatherVersion
 
 
 class WeatherVersionDataCollector:
@@ -29,7 +31,6 @@ class WeatherVersionDataCollector:
 
     def calculate_base_date_time(self):
         now = datetime.now()
-        print(now)
         if (self.callType == 'VSRT'):
             if now.minute <= 45:
                 if now.hour == 0:
@@ -43,7 +44,11 @@ class WeatherVersionDataCollector:
             else:
                 base_datetime = now.strftime('%Y%m%d%H30')
         else:
-            base_datetime = now.strftime('%Y%m%d%H%M')
+            base_times = ['0200', '0500', '0800', '1100', '1400', '1700', '2000', '2300']
+            current_time = now.time()
+            closest_time = min(base_times, key=lambda x: (current_time.hour - int(x[:2])) ** 2 + (
+                    current_time.minute - int(x[2:])) ** 2)
+            base_datetime = now.strftime('%Y%m%d')+closest_time
         return base_datetime
 
     def call_api_data(self):
@@ -58,7 +63,51 @@ class WeatherVersionDataCollector:
         headers = {
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36'}
         response = requests.get(self.url, params=params, verify=False, headers=headers)
-        pprint.pp(response.json())
+        resData = response.json()
+        pprint.pp(resData)
+        self.data_save(resData)
+
+    def data_save(self, res):
+        status = res.get('response').get('header').get('resultCode')
+        status_str = res.get('response').get('header').get('resultMsg')
+        file_type = res.get('response').get('body').get('items').get('item')[0].get('filetype')
+        version = res.get('response').get('body').get('items').get('item')[0].get('version')
+        print("Starting data save")
+        db = SessionLocal()  # 세션 열기
+        try:
+            # 데이터베이스에 추가
+            if status == '00':
+                existing_version = db.query(WeatherVersion).filter_by(used=1,type=file_type, version=version).first()
+                if not existing_version:
+                    weather_version = WeatherVersion(
+                        status=status,
+                        status_str=status_str,
+                        type=file_type,
+                        version=version,
+                        call_datetime=datetime.now().strftime('%Y-%m-%d %H:%M:00'),
+                        datetime=self.baseDateTime,
+                        used=0
+                    )
+                    db.add(weather_version)
+                    db.commit()
+            else:
+                weather_version = WeatherVersion(
+                    status=status,
+                    status_str=status_str,
+                    type=self.callType,
+                    version='00000000000',
+                    call_datetime=datetime.now().strftime('%Y-%m-%d %H:%M:00'),
+                    datetime=self.baseDateTime,
+                    used=0
+                )
+                db.add(weather_version)
+                db.commit()
+            print("Data saved successfully")
+        except Exception as e:
+            db.rollback()
+            print("Data save failed:", str(e))
+        finally:
+            db.close()  # 세션 닫기
 
 
 if __name__ == "__main__":
