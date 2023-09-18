@@ -34,21 +34,21 @@ class WeatherDataCollector:
         self.service_key = settings.SERVICE_KEY
         self.base_date, self.base_time, self.version = self.calculate_base_date_time()
 
-    def get_api_url(self):
+    def get_api_url(self):  # API URL 설정을 가져오는 함수
         if self.call_type == 'VSRT':
             _URL = settings.GET_ULTRA_URL
         else:
             _URL = settings.GET_VILAGE_URL
         return _URL
 
-    def process_api_response(self, response_data, nx, ny):
+    def process_api_response(self, response_data, nx, ny):  # API 응답 데이터를 가공하는 함수
         df = pd.DataFrame(response_data['response']['body']['items']['item'])
         df['factDateTime'] = pd.to_datetime(df['fcstDate'] + ' ' + df['fcstTime'])
         df_pivot = df.pivot(index=['factDateTime'], columns='category', values='fcstValue')
         df_pivot = df_pivot.fillna(0)
         return df_pivot, nx, ny
 
-    def save_weather_data(self, weather_data, nx, ny):
+    def save_weather_data(self, weather_data, nx, ny):  # 날씨 데이터를 저장하는 함수
         db = SessionLocal()
         if self.call_type == 'SHRT':
             self.shrt_data_save(db, weather_data, nx, ny)
@@ -56,7 +56,7 @@ class WeatherDataCollector:
             self.vsrt_data_save(db, weather_data, nx, ny)
         db.close()
 
-    def vsrt_data_save(self, db, weather_data, nx, ny):
+    def vsrt_data_save(self, db, weather_data, nx, ny):  # 초단기예보 데이터를 저장하는 함수
         for index, row in weather_data.iterrows():
             now = datetime.now()
             factDateTime = index
@@ -125,7 +125,7 @@ class WeatherDataCollector:
                 check_data.lgtVal = LGT
             db.commit()
 
-    def shrt_data_save(self, db, weather_data, nx, ny):
+    def shrt_data_save(self, db, weather_data, nx, ny):  # 단기예보 데이터를 저장하는 함수
         for index, row in weather_data.iterrows():
             now = datetime.now()
             factDateTime = index
@@ -206,7 +206,7 @@ class WeatherDataCollector:
                 check_data.wsdVal = WSD
             db.commit()
 
-    def version_update(self):
+    def version_update(self):  # 날씨 데이터 버전 정보 업데이트 함수
         db = SessionLocal()
         weather_version = (
             db.query(WeatherVersion).filter_by(type=self.call_type, version=self.version, used=0).first()
@@ -215,7 +215,7 @@ class WeatherDataCollector:
         db.commit()
         db.close()
 
-    def calculate_base_date_time(self):
+    def calculate_base_date_time(self):  # 기상 데이터의 기준 일시 및 버전 정보 계산 함수
         db = SessionLocal()
         weather_version = db.query(WeatherVersion).filter_by(type=self.call_type, status='00', used=0).order_by(
             WeatherVersion.id.desc()).first()
@@ -229,7 +229,7 @@ class WeatherDataCollector:
             version = weather_version.version
             return date, time, version
 
-    async def fetch_data_with_retry(self, session, nx, ny, max_retries=3):
+    async def fetch_data_with_retry(self, session, nx, ny, max_retries=3):  # API 요청을 재시도하는 함수
         params = {
             'serviceKey': self.service_key,
             'base_date': self.base_date,
@@ -261,7 +261,7 @@ class WeatherDataCollector:
                 wait_time = 2 ** retry_count  # 지수 백오프를 사용한 재시도 간격 설정
                 await asyncio.sleep(wait_time)
 
-    async def main_async(self):
+    async def main_async(self):  # 비동기 메인 함수
         tasks = []
         if self.base_date != None:
             db = SessionLocal()
@@ -284,12 +284,12 @@ class WeatherDataCollector:
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     start = time.time()
-
+    # 단기예보 수집
     collector = WeatherDataCollector('SHRT')
     loop.run_until_complete(collector.main_async())
     end = time.time()
     print(f"elapsed time = {end - start}s")
-
+    # 초단기예보 수집
     start = time.time()
     collector = WeatherDataCollector('VSRT')
     loop.run_until_complete(collector.main_async())
