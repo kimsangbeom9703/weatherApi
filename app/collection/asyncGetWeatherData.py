@@ -1,3 +1,4 @@
+from time import time
 import pprint
 import sys
 from os import path
@@ -21,14 +22,17 @@ from db.models.weatherVersionModel import WeatherVersion
 from db.models.areaModel import AreaData
 from db.models.collectionWeatherModel import CollectionWeatherModel
 
+import asyncio
+import aiohttp
+
 
 class WeatherDataCollector:
+    # ...
     def __init__(self, call_type):
         self.call_type = call_type
         self.url = self.get_api_url()
         self.service_key = settings.SERVICE_KEY
-        self.base_date, self.base_time ,self.version = self.calculate_base_date_time()
-        self.get_area_data()
+        self.base_date, self.base_time, self.version = self.calculate_base_date_time()
 
     def get_api_url(self):
         if self.call_type == 'VSRT':
@@ -36,68 +40,6 @@ class WeatherDataCollector:
         else:
             _URL = settings.GET_VILAGE_URL
         return _URL
-
-    def calculate_base_date_time(self):
-        db = SessionLocal()
-        weather_version = db.query(WeatherVersion).filter_by(type=self.call_type, status='00', used=0).order_by(
-            WeatherVersion.id.desc()).first()
-        if not weather_version:
-            print("No weather version found. Exiting gracefully...")
-            return None, None, None
-        date = weather_version.datetime[0:8]
-        time = weather_version.datetime[8:]
-        version = weather_version.version
-        db.close()
-        return date, time, version
-
-    def get_area_data(self):
-        if self.base_date != None:
-            db = SessionLocal()
-            area_data = (
-                db.query(AreaData.grid_x, AreaData.grid_y)
-                .filter(AreaData.level3.is_(None))
-                .distinct()
-                .all()
-            )
-            for item in area_data:
-                now = datetime.now()
-                print(f"시간: {now.strftime('%Y-%m-%d %H:%M:%S')}, nx:{item.grid_x}, ny:{item.grid_y}")
-                self.call_api_data(item.grid_x, item.grid_y)
-                time.sleep(1)
-            db.close()
-            self.version_update()
-
-        #return area_data
-
-    def call_api_data(self, nx, ny, max_retries=3):
-        params = {
-            'serviceKey': self.service_key,
-            'base_date': self.base_date,
-            'base_time': self.base_time,
-            'nx': nx,
-            'ny': ny,
-            'pageNo': '1',
-            'numOfRows': '1000',
-            'dataType': 'JSON'
-        }
-        retry_count = 0
-        while retry_count < max_retries:
-            try:
-                headers = {
-                    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36'}
-                response = requests.get(self.url, params=params, verify=False, headers=headers)
-                if response.status_code == 200:
-                    weather_data, nx, ny = self.process_api_response(response.json(), nx, ny)
-                    # pprint.pp(nx)
-                    self.save_weather_data(weather_data, nx, ny)
-                    break
-                else:
-                    print(f"Status code: {response.status_code}")
-            except RequestException as e:
-                print(f"Request failed: {str(e)}")
-                retry_count += 1
-                wait_time = 2 ** retry_count  # 지수 백오프를 사용한 재시도 간격 설정
-                time.sleep(wait_time)
 
     def process_api_response(self, response_data, nx, ny):
         df = pd.DataFrame(response_data['response']['body']['items']['item'])
@@ -109,11 +51,12 @@ class WeatherDataCollector:
     def save_weather_data(self, weather_data, nx, ny):
         db = SessionLocal()
         if self.call_type == 'SHRT':
-            self.shrt_data_save(db,weather_data,nx,ny)
+            self.shrt_data_save(db, weather_data, nx, ny)
         else:
-            self.vsrt_data_save(db,weather_data,nx,ny)
+            self.vsrt_data_save(db, weather_data, nx, ny)
         db.close()
-    def vsrt_data_save(self,db,weather_data,nx,ny):
+
+    def vsrt_data_save(self, db, weather_data, nx, ny):
         for index, row in weather_data.iterrows():
             now = datetime.now()
             factDateTime = index
@@ -181,7 +124,8 @@ class WeatherDataCollector:
                 check_data.wsdVal = WSD,
                 check_data.lgtVal = LGT
             db.commit()
-    def shrt_data_save(self,db,weather_data,nx,ny):
+
+    def shrt_data_save(self, db, weather_data, nx, ny):
         for index, row in weather_data.iterrows():
             now = datetime.now()
             factDateTime = index
@@ -261,15 +205,95 @@ class WeatherDataCollector:
                 check_data.vecVal = VEC,
                 check_data.wsdVal = WSD
             db.commit()
+
     def version_update(self):
         db = SessionLocal()
         weather_version = (
-            db.query(WeatherVersion).filter_by(type=self.call_type,version=self.version,used=0).first()
+            db.query(WeatherVersion).filter_by(type=self.call_type, version=self.version, used=0).first()
         )
         weather_version.used = 1
         db.commit()
         db.close()
 
+    def calculate_base_date_time(self):
+        db = SessionLocal()
+        weather_version = db.query(WeatherVersion).filter_by(type=self.call_type, status='00', used=0).order_by(
+            WeatherVersion.id.desc()).first()
+        db.close()
+        if not weather_version:
+            print("No weather version found. Exiting gracefully...")
+            return None, None, None
+        else:
+            date = weather_version.datetime[0:8]
+            time = weather_version.datetime[8:]
+            version = weather_version.version
+            return date, time, version
+
+    async def fetch_data_with_retry(self, session, nx, ny, max_retries=3):
+        params = {
+            'serviceKey': self.service_key,
+            'base_date': self.base_date,
+            'base_time': self.base_time,
+            'nx': nx,
+            'ny': ny,
+            'pageNo': '1',
+            'numOfRows': '1000',
+            'dataType': 'JSON'
+        }
+        headers = {
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36'
+        }
+        retry_count = 0
+        while retry_count < max_retries:
+            try:
+                async with session.get(self.url, params=params, headers=headers) as response:
+                    if response.status == 200:
+                        response_data = await response.json()
+                        weather_data, nx, ny = self.process_api_response(response_data, nx, ny)
+                        self.save_weather_data(weather_data, nx, ny)
+                        await asyncio.sleep(1)
+                        break
+                    else:
+                        print(f"Status code: {response.status}")
+            except aiohttp.ClientError as e:  # aiohttp 예외로 변경
+                print(f"Request failed: {str(e)}")
+                retry_count += 1
+                wait_time = 2 ** retry_count  # 지수 백오프를 사용한 재시도 간격 설정
+                await asyncio.sleep(wait_time)
+
+    async def main_async(self):
+        tasks = []
+        if self.base_date != None:
+            db = SessionLocal()
+            area_data = (
+                db.query(AreaData.grid_x, AreaData.grid_y)
+                .filter(AreaData.level3.is_(None))
+                .distinct()
+                .all()
+            )
+            connector = aiohttp.TCPConnector(limit=10)  # 연결 수를 조정
+            async with aiohttp.ClientSession(connector=connector) as session:  # 클라이언트 세션 재사용
+                for nx, ny in area_data:
+                    task = asyncio.ensure_future(self.fetch_data_with_retry(session, nx, ny))
+                    tasks.append(task)
+
+                await asyncio.gather(*tasks)
+            self.version_update()
+
+
 if __name__ == "__main__":
-    WeatherDataCollector('SHRT')
-    WeatherDataCollector('VSRT')
+    loop = asyncio.get_event_loop()
+    start = time.time()
+
+    collector = WeatherDataCollector('SHRT')
+    loop.run_until_complete(collector.main_async())
+    end = time.time()
+    print(f"elapsed time = {end - start}s")
+
+    start = time.time()
+    collector = WeatherDataCollector('VSRT')
+    loop.run_until_complete(collector.main_async())
+    end = time.time()
+    print(f"elapsed time = {end - start}s")
+
+    loop.close()
