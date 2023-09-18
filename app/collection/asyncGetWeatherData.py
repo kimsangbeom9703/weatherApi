@@ -241,7 +241,7 @@ class WeatherDataCollector:
             'dataType': 'JSON'
         }
         headers = {
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36'
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36'
         }
         retry_count = 0
         while retry_count < max_retries:
@@ -261,6 +261,15 @@ class WeatherDataCollector:
                 wait_time = 2 ** retry_count  # 지수 백오프를 사용한 재시도 간격 설정
                 await asyncio.sleep(wait_time)
 
+    def delete_old_weather_data(self): # 3일지난 데이터 삭제 함수
+        # 데이터베이스와 연결
+        db = SessionLocal()
+        # 3일 이전의 날짜 계산
+        three_days_ago = datetime.now() - timedelta(days=3)
+        # 삭제 쿼리 실행
+        db.query(CollectionWeatherModel).filter(CollectionWeatherModel.fcstRealDate < three_days_ago).delete()
+        db.commit()
+        db.close()
     async def main_async(self):  # 비동기 메인 함수
         tasks = []
         if self.base_date != None:
@@ -271,7 +280,7 @@ class WeatherDataCollector:
                 .distinct()
                 .all()
             )
-            connector = aiohttp.TCPConnector(limit=10)  # 연결 수를 조정
+            connector = aiohttp.TCPConnector(limit=5)  # 연결 수를 조정
             async with aiohttp.ClientSession(connector=connector) as session:  # 클라이언트 세션 재사용
                 for nx, ny in area_data:
                     task = asyncio.ensure_future(self.fetch_data_with_retry(session, nx, ny))
@@ -279,10 +288,12 @@ class WeatherDataCollector:
 
                 await asyncio.gather(*tasks)
             self.version_update()
+            self.delete_old_weather_data()
 
 
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
+    loop = asyncio.ProactorEventLoop()
+    asyncio.set_event_loop(loop)
     start = time.time()
     # 단기예보 수집
     collector = WeatherDataCollector('SHRT')
