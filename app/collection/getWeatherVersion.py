@@ -6,9 +6,10 @@
 # -SHRT: 단기예보
 # ##
 import pprint
+import time
 import sys
 import requests
-
+from requests.exceptions import RequestException
 from os import path
 from datetime import datetime, timedelta
 
@@ -44,13 +45,15 @@ class WeatherVersionDataCollector:
         else:
             base_times = ['0210', '0510', '0810', '1110', '1410', '1710', '2010', '2310']
             current_time = now.time()
-            closest_time = min(base_times, key=lambda x: (current_time.hour - int(x[:2])) ** 2 + (
-                    current_time.minute - int(x[2:])) ** 2)
+            closest_time = min(
+                (time for time in base_times if int(time) <= (current_time.hour * 100 + current_time.minute)),
+                key=lambda x: (int(x[:2]) - current_time.hour) ** 2 + (int(x[2:]) - current_time.minute) ** 2
+            )
             base_date = now.strftime('%Y%m%d')
             base_time = closest_time
         return base_date + base_time
 
-    def call_api_data(self):
+    def call_api_data(self,max_retries=3):
         params = {
             'serviceKey': self.service_key,
             'basedatetime': self.base_date_time,
@@ -59,11 +62,23 @@ class WeatherVersionDataCollector:
             'numOfRows': '10',
             'dataType': 'JSON'
         }
-        headers = {
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36'}
-        response = requests.get(self.url, params=params, verify=False, headers=headers)
-        res_data = response.json()
-        self.data_save(res_data)
+        retry_count = 0
+        while retry_count < max_retries:
+            try:
+                headers = {
+                    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36'}
+                response = requests.get(self.url, params=params, verify=False, headers=headers)
+                if response.status_code == 200:
+                    res_data = response.json()
+                    self.data_save(res_data)
+                    break
+                else:
+                    print(f"Status code: {response.status_code}")
+            except RequestException as e:
+                print(f"Request failed: {str(e)}")
+                retry_count += 1
+                wait_time = 2 ** retry_count  # 지수 백오프를 사용한 재시도 간격 설정
+                time.sleep(wait_time)
 
     def data_save(self, res):
         status = res['response']['header']['resultCode']
@@ -108,5 +123,5 @@ class WeatherVersionDataCollector:
             db.close()
 
 if __name__ == "__main__":
-    WeatherVersionDataCollector('VSRT')
     WeatherVersionDataCollector('SHRT')
+    WeatherVersionDataCollector('VSRT')
