@@ -280,7 +280,7 @@ class WeatherDataCollector:
                 .distinct()
                 .all()
             )
-            connector = aiohttp.TCPConnector(limit=5)  # 연결 수를 조정
+            connector = aiohttp.TCPConnector(limit=5,ssl=False)  # 연결 수를 조정
             async with aiohttp.ClientSession(connector=connector) as session:  # 클라이언트 세션 재사용
                 for nx, ny in area_data:
                     task = asyncio.ensure_future(self.fetch_data_with_retry(session, nx, ny))

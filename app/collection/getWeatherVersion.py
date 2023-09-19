@@ -123,5 +123,12 @@ class WeatherVersionDataCollector:
             db.close()
 
 if __name__ == "__main__":
+    start = time.time()
     WeatherVersionDataCollector('SHRT')
+    end = time.time()
+    print(f"단기예보 정보 time = {end - start}s")
+    start = time.time()
     WeatherVersionDataCollector('VSRT')
+    end = time.time()
+    print(f"초단기예보 정보 time = {end - start}s")
+    
