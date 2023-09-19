@@ -204,8 +204,8 @@ class IncheonAirPortDustDataCollector:
 
 def delete_old_dust_data():
     db = SessionLocal()
-    # 3일 이전의 날짜 계산
-    three_days_ago = datetime.now() - timedelta(days=3)
+    # 10일 이전의 날짜 계산
+    three_days_ago = datetime.now() - timedelta(days=10)
     # 삭제 쿼리 실행
     db.query(IncheonAirportDustDataModel).filter(IncheonAirportDustDataModel.fcstRealDate < three_days_ago).delete()
     db.commit()
