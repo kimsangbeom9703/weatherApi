@@ -1,13 +1,8 @@
-from time import time
-import pprint
 import sys
 from os import path
 import time
-import requests
-from requests.exceptions import RequestException
 import pandas as pd
 from datetime import datetime, timedelta
-import numpy as np
 
 ###
 # # -VSRT: 초단기예보
@@ -261,15 +256,7 @@ class WeatherDataCollector:
                 wait_time = 2 ** retry_count  # 지수 백오프를 사용한 재시도 간격 설정
                 await asyncio.sleep(wait_time)
 
-    def delete_old_weather_data(self): # 3일지난 데이터 삭제 함수
-        # 데이터베이스와 연결
-        db = SessionLocal()
-        # 3일 이전의 날짜 계산
-        three_days_ago = datetime.now() - timedelta(days=3)
-        # 삭제 쿼리 실행
-        db.query(CollectionWeatherModel).filter(CollectionWeatherModel.fcstRealDate < three_days_ago).delete()
-        db.commit()
-        db.close()
+
     async def main_async(self):  # 비동기 메인 함수
         tasks = []
         if self.base_date != None:
@@ -280,7 +267,7 @@ class WeatherDataCollector:
                 .distinct()
                 .all()
             )
-            connector = aiohttp.TCPConnector(limit=5,ssl=False)  # 연결 수를 조정
+            connector = aiohttp.TCPConnector(limit=3,ssl=False)  # 연결 수를 조정
             async with aiohttp.ClientSession(connector=connector) as session:  # 클라이언트 세션 재사용
                 for nx, ny in area_data:
                     task = asyncio.ensure_future(self.fetch_data_with_retry(session, nx, ny))
@@ -288,7 +275,16 @@ class WeatherDataCollector:
 
                 await asyncio.gather(*tasks)
             self.version_update()
-            self.delete_old_weather_data()
+
+def delete_old_weather_data(): # 3일지난 데이터 삭제 함수
+    # 데이터베이스와 연결
+    db = SessionLocal()
+    # 3일 이전의 날짜 계산
+    three_days_ago = datetime.now() - timedelta(days=3)
+    # 삭제 쿼리 실행
+    db.query(CollectionWeatherModel).filter(CollectionWeatherModel.fcstRealDate < three_days_ago).delete()
+    db.commit()
+    db.close()
 
 
 if __name__ == "__main__":
@@ -299,12 +295,17 @@ if __name__ == "__main__":
     collector = WeatherDataCollector('SHRT')
     loop.run_until_complete(collector.main_async())
     end = time.time()
-    print(f"elapsed time = {end - start}s")
+    print(f"단기예보 time = {end - start}s")
     # 초단기예보 수집
     start = time.time()
     collector = WeatherDataCollector('VSRT')
     loop.run_until_complete(collector.main_async())
     end = time.time()
-    print(f"elapsed time = {end - start}s")
+    print(f"초단기예보 time = {end - start}s")
 
     loop.close()
+
+    start = time.time()
+    delete_old_weather_data()
+    end = time.time()
+    print(f"예전데이터 삭제 time = {end - start}s")
