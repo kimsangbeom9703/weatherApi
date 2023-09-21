@@ -33,7 +33,7 @@ class IncheonAirPortDustDataCollector:
             _URL = settings.GET_INCHEON_OUT_API_URL
         return _URL
 
-    async def fetch_data_with_retry(self, session, max_retries=3):
+    async def fetch_data_with_retry(self, session, max_retries=5):
         params = {
             'serviceKey': self.service_key,
             'numOfRows': self.numOfRows,
@@ -205,9 +205,9 @@ class IncheonAirPortDustDataCollector:
 def delete_old_dust_data():
     db = SessionLocal()
     # 10일 이전의 날짜 계산
-    three_days_ago = datetime.now() - timedelta(days=10)
+    ten_days_ago = datetime.now() - timedelta(days=10)
     # 삭제 쿼리 실행
-    db.query(IncheonAirportDustDataModel).filter(IncheonAirportDustDataModel.fcstRealDate < three_days_ago).delete()
+    db.query(IncheonAirportDustDataModel).filter(IncheonAirportDustDataModel.fcstRealDate < ten_days_ago).delete()
     db.commit()
     db.close()
 

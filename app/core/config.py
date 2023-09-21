@@ -32,5 +32,8 @@ class config:
     ## 에어코리아
     AIR_KOREA_API_URL = os.getenv('AIR_KOREA_API_URL')
     AIR_KOREA_DUST_STATION_URL = AIR_KOREA_API_URL + str(os.getenv('AIR_KOREA_DUST_STATION_LIST_URL'))
+    AIR_KOREA_DUST_DATA_URL = AIR_KOREA_API_URL + str(os.getenv('AIR_KOREA_DATA_API_URL'))
+    AIR_KOREA_SIDO_NAME = os.getenv('AIR_KOREA_SIDO_NAME')
+    AIR_KOREA_VERSION = os.getenv('AIR_KOREA_VERSION')
 
 settings = config()
