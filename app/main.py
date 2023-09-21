@@ -1,7 +1,9 @@
 from fastapi import FastAPI
-from routers.area import area_router
+import routers as rt
 app = FastAPI()
-app.include_router(area_router)
+app.include_router(rt.area_router)
+app.include_router(rt.incheon_airport_router)
+app.include_router(rt.auth_service_key_router)
 #
 # @app.get("/")
 # async def root():
