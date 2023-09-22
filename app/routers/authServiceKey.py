@@ -18,7 +18,6 @@ auth_service_key_router = APIRouter(
 )  # Route 분리
 
 
-
 @auth_service_key_router.post("/create/key", response_model=authServiceKeySchemas.ResponseModel,status_code=201)  # 키 생성
 async def create_key(req: authServiceKeySchemas.ServiceKeyCreate, db: Session = Depends(get_db)):
     AuthServiceKeyManager(db=db)

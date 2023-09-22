@@ -1,10 +1,10 @@
 from sqlalchemy.orm import Session
-from db.models.areaModel import AreaDataModel
-from db.models.incheonAirportDustDataModel import IncheonAirportDustDataModel
-from db.models.incheonAirportDustStationModel import IncheonAirportDustStationModel
-def getAreaListAllData(db: Session):
-    return db.query(AreaDataModel).all()
-def getIncheonDustStationAllData(db:Session):
-    return db.query(IncheonAirportDustStationModel).all()
-def getIncheonDustDataAllData(db:Session):
-    return db.query(IncheonAirportDustDataModel).all()
+from typing import Type
+
+
+def get_all_data(db: Session, model, skip: int = 0, limit: int = 10):
+    _list = db.query(model).order_by(model.id.asc())
+
+    total = _list.count()
+    list = _list.offset(skip).limit(limit).all()
+    return total, list  # (전체 건수, 페이징 적용된 질문 목록)
