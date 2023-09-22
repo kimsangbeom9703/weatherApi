@@ -2,7 +2,7 @@ from sqlalchemy import Column, VARCHAR, Integer , DATETIME,TEXT,ForeignKey
 from db.session import Base
 
 
-class CollectionWeatherModel(Base):
+class AuthApiServiceLogModel(Base):
     __tablename__ = "auth_api_service_log"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True, comment='')

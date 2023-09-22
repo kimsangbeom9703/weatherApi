@@ -13,8 +13,8 @@ sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 from core.config import settings
 
 from db.session import SessionLocal
-from db.models.weatherVersionModel import WeatherVersion
-from db.models.areaModel import AreaData
+from db.models.weatherVersionModel import WeatherVersionModel
+from db.models.areaModel import AreaDataModel
 from db.models.collectionWeatherModel import CollectionWeatherModel
 
 import asyncio
@@ -204,7 +204,7 @@ class WeatherDataCollector:
     def version_update(self):  # 날씨 데이터 버전 정보 업데이트 함수
         db = SessionLocal()
         weather_version = (
-            db.query(WeatherVersion).filter_by(type=self.call_type, version=self.version, used=0).first()
+            db.query(WeatherVersionModel).filter_by(type=self.call_type, version=self.version, used=0).first()
         )
         weather_version.used = 1
         db.commit()
@@ -212,8 +212,8 @@ class WeatherDataCollector:
 
     def calculate_base_date_time(self):  # 기상 데이터의 기준 일시 및 버전 정보 계산 함수
         db = SessionLocal()
-        weather_version = db.query(WeatherVersion).filter_by(type=self.call_type, status='00', used=0).order_by(
-            WeatherVersion.id.desc()).first()
+        weather_version = db.query(WeatherVersionModel).filter_by(type=self.call_type, status='00', used=0).order_by(
+            WeatherVersionModel.id.desc()).first()
         db.close()
         if not weather_version:
             print("No weather version found. Exiting gracefully...")
@@ -262,8 +262,8 @@ class WeatherDataCollector:
         if self.base_date != None:
             db = SessionLocal()
             area_data = (
-                db.query(AreaData.grid_x, AreaData.grid_y)
-                .filter(AreaData.level3.is_(None))
+                db.query(AreaDataModel.grid_x, AreaDataModel.grid_y)
+                .filter(AreaDataModel.level3.is_(None))
                 .distinct()
                 .all()
             )

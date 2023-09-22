@@ -1,6 +1,6 @@
 from sqlalchemy import Column, VARCHAR, DECIMAL, Integer, BigInteger, DATE, ForeignKey
 from db.session import Base
-class AreaData(Base):
+class AreaDataModel(Base):
     __tablename__ = "area_data"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True, comment='')

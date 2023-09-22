@@ -18,7 +18,7 @@ sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 from core.config import settings
 
 from db.session import SessionLocal
-from db.models.weatherVersionModel import WeatherVersion
+from db.models.weatherVersionModel import WeatherVersionModel
 
 
 class WeatherVersionDataCollector:
@@ -92,9 +92,9 @@ class WeatherVersionDataCollector:
         db = SessionLocal()
         try:
             if status == '00':
-                existing_version = db.query(WeatherVersion).filter_by(used=1, type=self.call_type, version=version).first()
+                existing_version = db.query(WeatherVersionModel).filter_by(used=1, type=self.call_type, version=version).first()
                 if not existing_version:
-                    weather_version = WeatherVersion(
+                    weather_version = WeatherVersionModel(
                         status=status,
                         status_str=status_str,
                         type=self.call_type,
@@ -106,7 +106,7 @@ class WeatherVersionDataCollector:
                     db.add(weather_version)
                     db.commit()
             else:
-                weather_version = WeatherVersion(
+                weather_version = WeatherVersionModel(
                     status=status,
                     status_str=status_str,
                     type=self.call_type,

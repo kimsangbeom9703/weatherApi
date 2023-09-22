@@ -7,6 +7,7 @@ from apis import area
 area_router = APIRouter(
     prefix="/api/area",  # url 앞에 고정적으로 붙는 경로추가
     tags=["area"], # docs tag name
+    include_in_schema=False
 )  # Route 분리
 
 

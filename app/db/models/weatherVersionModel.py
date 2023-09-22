@@ -2,7 +2,7 @@ from sqlalchemy import Column, VARCHAR, DATETIME, Integer
 from db.session import Base
 
 
-class WeatherVersion(Base):
+class WeatherVersionModel(Base):
     __tablename__ = "weather_version"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True, comment='')

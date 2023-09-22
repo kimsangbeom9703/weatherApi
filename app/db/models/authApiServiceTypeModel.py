@@ -2,7 +2,7 @@ from sqlalchemy import Column, VARCHAR, Integer
 from db.session import Base
 
 
-class CollectionWeatherModel(Base):
+class AuthApiServiceTypeModel(Base):
     __tablename__ = "auth_api_service_type"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True, comment='')
