@@ -1,7 +1,10 @@
 import pprint
 
-from crud import crud_get
-from crud import crud_create
+from fastapi import HTTPException
+from starlette.status import HTTP_403_FORBIDDEN
+
+from crud import crud_get ,crud_create , crud_update
+
 
 from db.models.authApiServiceKeyModel import AuthApiServiceKeyModel
 from db.models.authApiServiceLogModel import AuthApiServiceLogModel
@@ -11,6 +14,7 @@ from datetime import datetime, timedelta
 
 import uuid
 import json
+
 
 class AuthServiceKeyManager:
     def __init__(self, db):
@@ -23,6 +27,39 @@ class AuthServiceKeyManager:
     def expiresDate(self):
         now = datetime.now() + timedelta(weeks=12)
         return now.strftime('%Y-%m-%d %H:%M:%S')
+
+    def checkServiceKey(self, api_key_header, key_type):
+        if api_key_header is None:
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN,
+                detail="API Key header is missing"
+            )
+
+        # 데이터베이스에서 서비스 키를 조회합니다.
+        api_key = crud_get.check_service_api_key(self.db, AuthApiServiceKeyModel, api_key_header, key_type)
+
+        if api_key is None:
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN,
+                detail="Could not validate credentials",
+            )
+
+        return api_key
+
+    def serviceKeyLogUpdate(self, apiKeyData, endpoint):
+        if apiKeyData is None:
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN,
+                detail="API Key Data is missing"
+            )
+        updateServiceKeyLog = crud_update.update_service_key_endpoint_log(self.db,AuthApiServiceLogModel,apiKeyData,endpoint)
+        if updateServiceKeyLog is None:
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN,
+                detail="Api Log Not Save.",
+            )
+
+        return updateServiceKeyLog
 
     def createAuthServiceKey(self, req):
         req_dict = req.dict()
@@ -61,4 +98,3 @@ class AuthServiceKeyManager:
         }
         return response_dict
         # return crud_create.createData(db,AuthApiServiceKeyModel,req)
-

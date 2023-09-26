@@ -6,24 +6,6 @@ import routers as rt
 from fastapi.openapi.utils import get_openapi
 
 app = FastAPI()
-valid_service_key = "2c647a7f-3a51-4c3c-8d1f-a8029ee5ebe2"
-
-
-# 미들웨어 함수로 serviceKey를 확인하고 유효성을 검사합니다.
-async def validate_service_key(request: Request, call_next):
-    service_key = request.query_params.get("serviceKey")
-    endpoint = request.url.path
-    print(endpoint)
-    if service_key != valid_service_key:
-        raise HTTPException(status_code=401, detail="Invalid serviceKey")
-
-    response = await call_next(request)
-    return response
-
-
-# 미들웨어 추가
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
-app.middleware("http")(validate_service_key)  # 미들웨어 함수를 직접 등록
 
 app.include_router(rt.area_router)
 app.include_router(rt.incheon_airport_router)
