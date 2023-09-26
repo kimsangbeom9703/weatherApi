@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from db.connection import get_db
 
 from uuid import UUID
-
+from typing import Union
 from apis import incheonAirportApi, authServiceKeyApi
 
 incheon_airport_router = APIRouter(
@@ -24,6 +24,13 @@ incheon_airport_router = APIRouter(
 #     return {
 #         "res": res,
 #     }  # 결과
+
+async def common_parameters(
+        q: Union[str, None] = None, skip: int = 0, limit: int = 10
+):
+    return {"q": q, "skip": skip, "limit": limit}
+
+
 def get_api_key(api_key_header: str = Depends(APIKeyHeader(name="API-KEY")), db: Session = Depends(get_db)):
     authServiceManager = authServiceKeyApi.AuthServiceKeyManager(db=db)
     api_key_header = authServiceManager.checkServiceKey(api_key_header, 'INCHEON')
@@ -31,12 +38,13 @@ def get_api_key(api_key_header: str = Depends(APIKeyHeader(name="API-KEY")), db:
 
 
 @incheon_airport_router.get("/station")  # Route Path
-def read_station(serviceKeyData: str = Depends(get_api_key), page: int = 0, size: int = 10,
+def read_station(serviceKeyData: str = Depends(get_api_key), commons: dict = Depends(common_parameters),
                  db: Session = Depends(get_db)):
     authServiceManager = authServiceKeyApi.AuthServiceKeyManager(db=db)
     logSave = authServiceManager.serviceKeyLogUpdate(serviceKeyData, '/api/airport/station')
     print(logSave.request_count)
-    total, _list = incheonAirportApi.getDustStationAllData(db=db, page=page, size=size)  # apis 호출
+    total, _list = incheonAirportApi.getDustStationAllData(db=db, page=commons['skip'],
+                                                           size=commons['limit'])  # apis 호출
     return {
         "status": 'success',
         "total": total,

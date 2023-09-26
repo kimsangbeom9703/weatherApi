@@ -187,9 +187,9 @@ class AirKoreaDustDataColletor:
 def delete_old_dust_data():
     db = SessionLocal()
     # 3일 이전의 날짜 계산
-    three_days_ago = datetime.now() - timedelta(days=3)
+    five_days_ago = datetime.now() - timedelta(days=5)
     # 삭제 쿼리 실행
-    db.query(AirKoreaDustDataModel).filter(AirKoreaDustDataModel.fcstRealDate < three_days_ago).delete()
+    db.query(AirKoreaDustDataModel).filter(AirKoreaDustDataModel.fcstRealDate < five_days_ago).delete()
     db.commit()
     db.close()
 
