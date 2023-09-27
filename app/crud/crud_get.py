@@ -23,3 +23,4 @@ def check_service_api_key(db: Session, model, service_key, key_type):
         or_(model.serviceType == "ALL", model.serviceType == key_type)
     ).first()
     return api_key_data
+
