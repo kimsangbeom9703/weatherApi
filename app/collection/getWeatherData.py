@@ -18,7 +18,7 @@ from core.config import settings
 
 from db.session import SessionLocal
 from db.models.weatherVersionModel import WeatherVersion
-from db.models.areaModel import AreaData
+from db.models.areaModel import AreaDataModel
 from db.models.collectionWeatherModel import CollectionWeatherModel
 
 
@@ -54,8 +54,8 @@ class WeatherDataCollector:
         if self.base_date != None:
             db = SessionLocal()
             area_data = (
-                db.query(AreaData.grid_x, AreaData.grid_y)
-                .filter(AreaData.level3.is_(None))
+                db.query(AreaDataModel.grid_x, AreaDataModel.grid_y)
+                .filter(AreaDataModel.level3.is_(None))
                 .distinct()
                 .all()
             )
