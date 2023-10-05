@@ -1,4 +1,6 @@
 from fastapi import FastAPI ,HTTPException, Request, status
+from fastapi.staticfiles import StaticFiles
+
 from fastapi.middleware import Middleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
@@ -6,6 +8,8 @@ import routers as rt
 from fastapi.openapi.utils import get_openapi
 
 app = FastAPI()
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.include_router(rt.area_router)
 app.include_router(rt.incheon_airport_router)
@@ -18,6 +22,7 @@ app.include_router(rt.auth_service_key_router)
 #     return {"message": "Hello World"}
 #
 #
+
 def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema

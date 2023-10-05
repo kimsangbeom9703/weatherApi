@@ -15,6 +15,7 @@ from core.config import settings
 from db.session import SessionLocal
 from db.models.weatherVersionModel import WeatherVersionModel
 from db.models.areaModel import AreaDataModel
+from db.models.weatherAreaModel import WeatherAreaModel
 from db.models.collectionWeatherModel import CollectionWeatherModel
 
 import asyncio
@@ -261,15 +262,14 @@ class WeatherDataCollector:
         tasks = []
         if self.base_date != None:
             db = SessionLocal()
-            area_data = (
-                db.query(AreaDataModel.grid_x, AreaDataModel.grid_y)
-                .filter(AreaDataModel.level3.is_(None))
-                .distinct()
+            weather_area_data = (
+                db.query(WeatherAreaModel.grid_x, WeatherAreaModel.grid_y)
+                .filter(WeatherAreaModel.used==1)
                 .all()
             )
             connector = aiohttp.TCPConnector(limit=3,ssl=False)  # 연결 수를 조정
             async with aiohttp.ClientSession(connector=connector) as session:  # 클라이언트 세션 재사용
-                for nx, ny in area_data:
+                for nx, ny in weather_area_data:
                     task = asyncio.ensure_future(self.fetch_data_with_retry(session, nx, ny))
                     tasks.append(task)
 
