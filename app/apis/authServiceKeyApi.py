@@ -98,3 +98,9 @@ class AuthServiceKeyManager:
         }
         return response_dict
         # return crud_create.createData(db,AuthApiServiceKeyModel,req)
+
+    def getListData(self,req):
+        pprint.pp(type(req['_start']))
+        return_data = crud_get.list(self.db,AuthApiServiceKeyModel,req)
+        pprint.pp(return_data)
+        return return_data

@@ -44,7 +44,7 @@ def get_all_station_data_by_time(db: Session, model, current_tiem):
     return results
 
 
-def get_station_dust_all_data(station_name,orderby, db: Session, model, skip: int = 0, limit: int = 10):
+def get_station_dust_all_data(station_name, orderby, db: Session, model, skip: int = 0, limit: int = 10):
     if orderby == 'asc':
         _list = db.query(model).filter(model.dustStationName == station_name).order_by(model.fcstRealDate.asc())
     else:
@@ -53,6 +53,35 @@ def get_station_dust_all_data(station_name,orderby, db: Session, model, skip: in
     list = _list.offset(skip).limit(limit).all()
     return total, list
 
+
 def get_all_station_data_first(db: Session, model, station_name):
     results = db.query(model).where(model.dustStationName == station_name).order_by(model.fcstRealDate.desc()).first()
     return results
+
+
+##2023-10-05==================================================================================================
+
+
+##
+# # 조회할 레코드 범위 설정
+# skip = 25  # 건너뛸 레코드 수
+# limit = 50  # 최대로 가져올 레코드 수
+#
+# # ORM을 사용하여 데이터 조회
+# query = session.query(YourModel)  # YourModel은 실제로 사용하려는 SQLAlchemy 모델입니다.
+# query = query.order_by(YourModel.id.desc())  # id 역순으로 정렬
+# query = query.offset(skip).limit(limit)  # 건너뛰기와 제한 설정##
+def list(db: Session, model, common):
+    _order = common['_order']
+    _sort = common['_sort']
+    _start = common['_start']
+    _end = common['_end']
+    query = db.query(model)
+    if _sort:
+        if _order == 'asc':
+            query = query.order_by(getattr(model, _sort))
+        elif _order == 'desc':
+            query = query.order_by(getattr(model, _sort).desc())
+    # ORM을 사용하여 데이터 조회
+    result = query.offset(_start).limit(_end)
+    return result
