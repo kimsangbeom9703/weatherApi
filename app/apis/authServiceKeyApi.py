@@ -3,8 +3,7 @@ import pprint
 from fastapi import HTTPException
 from starlette.status import HTTP_403_FORBIDDEN
 
-from crud import crud_get ,crud_create , crud_update
-
+from crud import crud_get, crud_create, crud_update
 
 from db.models.authApiServiceKeyModel import AuthApiServiceKeyModel
 from db.models.authApiServiceLogModel import AuthApiServiceLogModel
@@ -52,7 +51,8 @@ class AuthServiceKeyManager:
                 status_code=HTTP_403_FORBIDDEN,
                 detail="API Key Data is missing"
             )
-        updateServiceKeyLog = crud_update.update_service_key_endpoint_log(self.db,AuthApiServiceLogModel,apiKeyData,endpoint)
+        updateServiceKeyLog = crud_update.update_service_key_endpoint_log(self.db, AuthApiServiceLogModel, apiKeyData,
+                                                                          endpoint)
         if updateServiceKeyLog is None:
             raise HTTPException(
                 status_code=HTTP_403_FORBIDDEN,
@@ -76,6 +76,8 @@ class AuthServiceKeyManager:
                 "serviceTypeId": created_data.serviceTypeId,
                 "serviceType": created_data.serviceType,
                 "description": created_data.description,
+                "deviceId": created_data.deviceId,
+                "referer": created_data.referer,
                 "expires_at": created_data.expires_at,
                 "id": created_data.id,
                 "serviceKey": created_data.serviceKey,
@@ -99,8 +101,48 @@ class AuthServiceKeyManager:
         return response_dict
         # return crud_create.createData(db,AuthApiServiceKeyModel,req)
 
-    def getListData(self,req):
+    def getListData(self, req):
         pprint.pp(type(req['_start']))
-        return_data = crud_get.list(self.db,AuthApiServiceKeyModel,req)
+        return_data = crud_get.list(self.db, AuthApiServiceKeyModel, req)
         pprint.pp(return_data)
         return return_data
+
+    def updateAuthServiceKey(self, req):
+        # req_dict = req.dict()
+        # print(req_dict)
+        return_data = crud_get.isData(self.db, AuthApiServiceKeyModel, req)
+        if return_data is None:
+            raise HTTPException(
+                status_code=HTTP_403_FORBIDDEN,
+                detail="Not Service KEY"
+            )
+        else:
+            try:
+                update_data = crud_update.update_service_key_data(self.db, AuthApiServiceKeyModel, return_data, req)
+                statusCode = 200
+                status = 'success'
+                auth_service_key_dict = {
+                    'id': update_data.id,
+                    'serviceKey': update_data.serviceKey,
+                    'created_at': update_data.created_at,
+                    'updated_at': update_data.updated_at,
+                    'deviceId': update_data.deviceId,
+                    'description': update_data.description,
+                    'expires_at': update_data.expires_at,
+                    'referer': update_data.referer,
+                }
+            except Exception as e:
+                errorMsg = str(e)
+                statusCode = 400
+                status = 'fail'
+                auth_service_key_dict = {}
+            else:
+                errorMsg = None  # 오류가 발생하지 않을 때는 errorMsg를 None으로 설정
+
+            response_dict = {
+                "statusCode": statusCode,
+                "status": status,
+                "data": auth_service_key_dict,
+                "errorMsg": errorMsg if errorMsg else None
+            }
+        return response_dict

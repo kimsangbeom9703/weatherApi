@@ -17,6 +17,6 @@ def createData(db: Session, model, req):
         insertData = model(**req)
         db.add(insertData)
         db.commit()
-        return insertData
+        return insertData  # 값을 반환
     except Exception as e:
         db.rollback()  # 롤백

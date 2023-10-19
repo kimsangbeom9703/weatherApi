@@ -1,3 +1,5 @@
+import pprint
+
 from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 
@@ -84,4 +86,10 @@ def list(db: Session, model, common):
             query = query.order_by(getattr(model, _sort).desc())
     # ORM을 사용하여 데이터 조회
     result = query.offset(_start).limit(_end)
+    return result
+
+
+## serviceKey Update
+def isData(db: Session, model, req):
+    result = db.query(model).where(model.serviceKey == str(req.serviceKey), model.deviceId == req.deviceId).first()
     return result
